@@ -56,9 +56,9 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write  # mandatory for trusted publishing
-    environment:  # requires a 'release' environment in repo settings
-      name: release
-      url: https://pypi.org/p/pycap-dss
+    # environment:  # requires a 'release' environment in repo settings
+    #   name: release
+    #   url: https://pypi.org/p/pycap-dss
     steps:
 
       - name: Checkout main branch
@@ -94,9 +94,7 @@ jobs:
       # - name: Publish to PyPI
       #   uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Upload to PyPI
-        uses: actions/checkout@v4
-      
+      - name: Upload to PyPI    
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
