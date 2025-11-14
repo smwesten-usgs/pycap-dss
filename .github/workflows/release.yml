@@ -31,11 +31,18 @@ jobs:
         with:
           ref: main
 
+      
       - name: Extract version from branch name
         id: extract_version
         run: |
-          echo "##[set-output name=version;]${GITHUB_REF##*/}"
-          echo "Branch version: ${GITHUB_REF##*/}"
+          BRANCH_NAME=${GITHUB_REF##*/}
+          if [[ "$BRANCH_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "version=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Branch name '$BRANCH_NAME' is not a valid version tag (vX.Y.Z)"
+            exit 1
+          fi
+
 
       - name: Create tag from branch version
         run: |
