@@ -36,9 +36,16 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
 
+      
       - name: Check if GH_PAT is set
-        run: echo "GH_PAT is set"
-        if: ${{ secrets.GH_PAT != '' }}
+        run: |
+          if [ -z "${{ secrets.GH_PAT }}" ]; then
+            echo "GH_PAT is NOT set"
+            exit 1
+          else
+            echo "GH_PAT is set"
+          fi
+
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
