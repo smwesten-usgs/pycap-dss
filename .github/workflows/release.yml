@@ -20,28 +20,20 @@ jobs:
   release:
     name: Create Release
     # runs only when changes are merged to master
-    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    if: startsWith(github.head_ref, 'v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
     steps:
-      - name: Checkout main branch
+      - name: Checkout code
         uses: actions/checkout@v5
-        with:
-          ref: main
 
-      
-      - name: Extract version from branch name
+      - name: Extract version from PR branch
         id: extract_version
         run: |
-          BRANCH_NAME=${GITHUB_REF##*/}
-          if [[ "$BRANCH_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "version=$BRANCH_NAME" >> $GITHUB_OUTPUT
-          else
-            echo "❌ Branch name '$BRANCH_NAME' is not a valid version tag (vX.Y.Z)"
-            exit 1
-          fi
+          VERSION=${GITHUB_HEAD_REF}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
 
       - name: Create tag from branch version
