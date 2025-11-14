@@ -1,0 +1,101 @@
+name: Publish release
+on:
+  push:
+    branches:
+      - main
+      # branchname trigger if we had the ability to auto-prep release PRs
+      # (turned off for doi-usgs org)
+      #- v[0-9]+.[0-9]+.[0-9]+*
+  release:
+    types:
+      - published
+
+jobs:
+
+  release:
+    name: Create Release
+    # runs only when changes are merged to master
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          release_name: pycap-dss ${{ steps.tag_version.outputs.new_tag }}
+          body: |
+            Changes in this Release:
+            ${{ steps.tag_version.outputs.changelog }}
+          draft: true
+          prerelease: false
+
+  
+
+  publish:
+    name: Publish package
+    # runs only after release is published (manually promoted from draft)
+    # (allows editing of release notes, etc.)
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest  #ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write  # mandatory for trusted publishing
+    # environment:  # requires a 'release' environment in repo settings
+    #   name: release
+    #   url: https://pypi.org/p/pycap-dss
+    steps:
+
+      - name: Checkout main branch
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-tags: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check --strict dist/*
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      # - name: Upload to PyPI    
+      #   env:
+      #     TWINE_USERNAME: __token__
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      #   run: twine upload dist/*

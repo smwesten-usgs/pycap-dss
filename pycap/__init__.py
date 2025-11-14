@@ -21,3 +21,6 @@ from .utilities import (
     create_timeseries_template,
 )
 from .wells import Well, WellResponse
+
+from . import _version
+__version__ = _version.get_versions()['version']
