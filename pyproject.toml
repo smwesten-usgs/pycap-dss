@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pycap-dss"
-description = "Framework for anaytical streamflow depletion and drawdown calculations"
+description = "long_description.rst"
 dynamic = ["version"]
 authors = [
   {name = "Michael Fienen", email = "mnfienen@usgs.gov"},
