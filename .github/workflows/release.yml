@@ -56,9 +56,9 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write  # mandatory for trusted publishing
-    # environment:  # requires a 'release' environment in repo settings
-    #   name: release
-    #   url: https://pypi.org/p/pycap-dss
+    environment:  # requires a 'release' environment in repo settings
+      name: release
+      url: https://pypi.org/p/pycap-dss
     steps:
 
       - name: Checkout main branch
