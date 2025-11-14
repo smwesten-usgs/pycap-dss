@@ -20,31 +20,35 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+   
+
     steps:
       - name: Checkout main branch
         uses: actions/checkout@v4
         with:
-          ref: main
-      - name: Bump version and push tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          custom_tag: v1.0.0
+          fetch-tags: true
+
+      - name: Get latest tag from merged PR branch
+        id: get_tag
+        run: |
+          TAG=$(git describe --tags --abbrev=0)
+          echo "Latest tag: $TAG"
+          echo "tag_name=$TAG" >> $GITHUB_OUTPUT
 
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.tag_version.outputs.new_tag }}
-          release_name: pycap-dss ${{ steps.tag_version.outputs.new_tag }}
+          tag_name: ${{ steps.get_tag.outputs.tag_name }}
+          release_name: pycap-dss ${{ steps.get_tag.outputs.tag_name }}
           body: |
-            Changes in this Release: 
-            ${{ steps.tag_version.outputs.changelog }}
+            Changes in this Release:
+            Automatically generated from tag ${{ steps.get_tag.outputs.tag_name }}
           draft: true
           prerelease: false
+
 
   publish:
     name: Publish package
