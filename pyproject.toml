@@ -76,7 +76,7 @@ VCS = "git"
 style = "pep440"
 versionfile_source = "pycap/_version.py"
 versionfile_build = "pycap/_version.py"
-tag_prefix = "v"
+tag_prefix = ""
 parentdir_prefix = "pycap-"
 
 [project.urls]
