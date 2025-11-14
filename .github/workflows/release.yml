@@ -94,9 +94,9 @@ jobs:
       # - name: Publish to PyPI
       #   uses: pypa/gh-action-pypi-publish@release/v1
 
-
-      - uses: actions/checkout@v4
       - name: Upload to PyPI
+        uses: actions/checkout@v4
+      
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
