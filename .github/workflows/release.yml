@@ -25,24 +25,32 @@ jobs:
         uses: actions/checkout@v5
         with:
           ref: main
-      - name: Bump version and push tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create Release
-        id: create_release
+
+      - name: Extract version from branch name
+        id: extract_version
+        run: |
+          echo "##[set-output name=version;]${GITHUB_REF##*/}"
+          echo "Branch version: ${GITHUB_REF##*/}"
+
+      - name: Create tag from branch version
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.extract_version.outputs.version }}
+          git push origin ${{ steps.extract_version.outputs.version }}
+
+      - name: Create GitHub Release
         uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.tag_version.outputs.new_tag }}
-          release_name: pycap-dss ${{ steps.tag_version.outputs.new_tag }}
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          release_name: pycap-dss ${{ steps.extract_version.outputs.version }}
           body: |
-            Changes in this Release:
-            ${{ steps.tag_version.outputs.changelog }}
+            Automated release for version ${{ steps.extract_version.outputs.version }}
           draft: true
           prerelease: false
+
 
   
 
