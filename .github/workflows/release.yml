@@ -45,8 +45,7 @@ jobs:
             Automated release for version ${{ steps.extract_version.outputs.version }}
           draft: true
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          token: ${{ secrets.GH_PAT }}
 
 
       - name: Create GitHub Release
