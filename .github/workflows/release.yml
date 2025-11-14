@@ -1,0 +1,187 @@
+name: Publish release
+on:
+  push:
+    branches:
+      - main
+      # branchname trigger if we had the ability to auto-prep release PRs
+      # (turned off for doi-usgs org)
+      #- v[0-9]+.[0-9]+.[0-9]+*
+  release:
+    types:
+      - published
+
+jobs:
+
+  release:
+    name: Create Release
+    # runs only when changes are merged to master
+    if: ${{ github.event_name == 'push' && github.ref_name == 'main' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.2
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+        with:
+          tag_name: ${{ steps.tag_version.outputs.new_tag }}
+          release_name: pycap-dss ${{ steps.tag_version.outputs.new_tag }}
+          body: |
+            Changes in this Release:
+            ${{ steps.tag_version.outputs.changelog }}
+          draft: true
+          prerelease: false
+
+  docs:
+    needs: release
+    name: Publish Docs
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v5
+      with:
+        persist-credentials: false
+        ref: main
+        fetch-tags: true
+
+    - name: Get latest release version number
+      id: get_version
+      uses: battila7/get-version-action@v2
+
+    - name: Print version
+      shell: bash
+      run: |
+        echo ${{ steps.get_version.outputs.version }}
+
+    - name: Cache Miniconda
+      uses: actions/cache@v4
+      env:
+        # Increase this value to reset cache if environment.yml has changed
+        CACHE_NUMBER: 0
+      with:
+        path: ~/conda_pkgs_dir
+        key: ${{ runner.os }}-${{ matrix.python-version }}-${{
+            matrix.run-type }}-${{ env.CACHE_NUMBER }}-${{
+            hashFiles('ci/test_environment.yaml') }}
+
+    - name: Setup conda environment
+      uses: conda-incubator/setup-miniconda@v3
+      with:
+        auto-update-conda: true
+        activate-environment: pycap_ci
+        environment-file: ci/test_environment.yaml
+        python-version: ${{ matrix.python-version }}
+        #condarc-file: ci/example-condarc.yml
+        auto-activate-base: false
+        use-only-tar-bz2: true # IMPORTANT: This needs to be set for caching to work properly!
+
+
+    - name: Conda info
+      shell: bash -l {0}
+      run: micromamba info
+    - name: Install dependencies
+      shell: bash -l {0}
+      run: |
+        if [[ ! -d "$HOME/.local/bin" ]]; then
+            mkdir -p "$HOME/.local/bin";
+        fi
+        # copy modflow bins to local dir to add to PATH later
+        if [ "$RUNNER_OS" == "Windows" ]; then
+            d="win"
+        elif [ "$RUNNER_OS" == "macOS" ]; then
+            d="mac"
+        elif [ "$RUNNER_OS" == "Linux" ]; then
+            d="linux"
+        else
+            d="unexpectedos"
+            exit 1
+        fi
+        echo bin/$d/. >> $GITHUB_PATH
+        echo $GITHUB_PATH
+        pip install -e .
+        python -m ipykernel install --user --name mfsetup_ci --display-name "mfsetup_ci"
+    - name: Conda list
+      shell: bash -l {0}
+      run: micromamba list
+
+    - name: Run tests 
+      shell: bash -l {0}
+      run: |
+        coverage run -m pytest -v --durations=20
+        coverage report -m
+
+    - name: Build docs
+      shell: bash -l {0}
+      run: |
+        set -e
+        make -C docs html
+
+    - name: Deploy 🚀
+      uses: JamesIves/github-pages-deploy-action@v4.7.2
+      with:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        BRANCH: gh-pages
+        FOLDER: docs/build/html
+        CLEAN: false
+        TARGET_FOLDER: ${{ steps.get_version.outputs.version }}
+
+  publish:
+    name: Publish package
+    # runs only after release is published (manually promoted from draft)
+    # (allows editing of release notes, etc.)
+    if: ${{ github.event_name == 'release' }}
+    runs-on: ubuntu-latest  #ubuntu-22.04
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write  # mandatory for trusted publishing
+    environment:  # requires a 'release' environment in repo settings
+      name: release
+      url: https://pypi.org/p/pycap-dss
+    steps:
+
+      - name: Checkout main branch
+        uses: actions/checkout@v5
+        with:
+          ref: main
+          fetch-tags: true
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+          cache: 'pip'
+          cache-dependency-path: pyproject.toml
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install build twine
+
+      - name: Build package
+        run: python -m build
+
+      - name: Check package
+        run: twine check --strict dist/*
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
