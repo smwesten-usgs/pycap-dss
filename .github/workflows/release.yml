@@ -35,17 +35,17 @@ jobs:
           VERSION=${GITHUB_HEAD_REF}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-
-      - name: Create tag from branch version
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          name: pycap-dss ${{ steps.extract_version.outputs.version }}
+          body: |
+            Automated release for version ${{ steps.extract_version.outputs.version }}
+          draft: true
+          prerelease: false
         env:
-          GH_PAT: ${{ secrets.GH_PAT }}
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git remote set-url origin https://x-access-token:${GH_PAT}@github.com/${{ github.repository }}
-          git tag ${{ steps.extract_version.outputs.version }}
-          git push origin ${{ steps.extract_version.outputs.version }}
-
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create GitHub Release
         uses: actions/create-release@v1
