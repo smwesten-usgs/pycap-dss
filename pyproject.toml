@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=77.0.0"]
 build-backend = "setuptools.build_meta"
 
 
@@ -17,7 +17,9 @@ maintainers = [
 ]
 readme = "Readme.md"
 keywords = ["streamflow depletion", "analytical solutions","drawdown", "groundwater", "hydrogeology"]
-license = {file = "LICENSE.md"}
+license-files = [
+    "LICENSE.md"
+]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Science/Research",
@@ -48,7 +50,7 @@ dependencies = [
    "openpyxl",
    "requests"
 ]
-
+[project.optional-dependencies]
 test = [
     "codecov",
     "coverage",
@@ -64,7 +66,13 @@ docs = [
 "sphinx-copybutton",
 "sphinx_rtd_theme"
 ]
-
+[tool.versioneer]
+VCS = "git"
+style = "pep440"
+versionfile_source = "pycap/_version.py"
+versionfile_build = "pycap/_version.py"
+tag_prefix = ""
+parentdir_prefix = "pycap-"
 
 [project.urls]
 documentation = "https://doi-usgs.github.io/pycap-dss/latest/"
