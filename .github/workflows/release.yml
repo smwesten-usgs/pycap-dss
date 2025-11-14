@@ -82,20 +82,20 @@ jobs:
       - name: Build package
         run: python -m build
 
-      # - name: Check package
-      #   run: twine check --strict dist/*
+      - name: Check package
+        run: twine check --strict dist/*
 
-      # - name: Upload package
-      #   uses: actions/upload-artifact@v4
-      #   with:
-      #     name: dist
-      #     path: dist
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
 
-      # - name: Publish to PyPI
-      #   uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
 
-      - name: Upload to PyPI    
-        env:
-          TWINE_USERNAME: __token__
-          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-        run: twine upload dist/*
+      # - name: Upload to PyPI    
+      #   env:
+      #     TWINE_USERNAME: __token__
+      #     TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      #   run: twine upload dist/*
