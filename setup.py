@@ -1,15 +1,15 @@
 import setuptools
-import versioneer
+# import versioneer
 with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="pycap",
-    version=versioneer.get_version(),
-    cmdclass=versioneer.get_cmdclass()
+    # version=versioneer.get_version(),
+    # cmdclass=versioneer.get_cmdclass()
     # pyproject.toml has all these settings now
 
-    
+
     # author="Michael N. Fienen, Aaron Pruitt, Howard Reeves",
     # author_email="mnfienen@usgs.gov, aaron.pruitt@wisconsin.gov, hwreeves@usgs.gov",
     # description="Stream Depletion analysis tool",
