@@ -71,13 +71,13 @@ docs = [
 "sphinx-copybutton",
 "sphinx_rtd_theme"
 ]
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "pycap/_version.py"
-versionfile_build = "pycap/_version.py"
-tag_prefix = ""
-parentdir_prefix = "pycap-"
+# [tool.versioneer]
+# VCS = "git"
+# style = "pep440"
+# versionfile_source = "pycap/_version.py"
+# versionfile_build = "pycap/_version.py"
+# tag_prefix = ""
+# parentdir_prefix = "pycap-"
 
 [project.urls]
 documentation = "https://doi-usgs.github.io/pycap-dss/latest/"
