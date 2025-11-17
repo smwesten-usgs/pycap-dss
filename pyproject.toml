@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pycap-dss"
 description = "long_description.rst"
-version = "1.0.1"
+version = "1.0.3"
 authors = [
   {name = "Michael Fienen", email = "mnfienen@usgs.gov"},
   {name = "Aaron Pruitt", email = "Aaron.Pruitt@wisconsin.gov"},
@@ -27,7 +27,7 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Topic :: Scientific/Engineering :: Hydrology",
 ]
-requires-python = ">=3.11"
+requires-python = ">=3.10"
 dependencies = [
     "ipython",
    "jupyter",
