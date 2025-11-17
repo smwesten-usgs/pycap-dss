@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pycap-dss"
 description = "long_description.rst"
-version = "1.0.3"
+version = "1.0.5"
 authors = [
   {name = "Michael Fienen", email = "mnfienen@usgs.gov"},
   {name = "Aaron Pruitt", email = "Aaron.Pruitt@wisconsin.gov"},
