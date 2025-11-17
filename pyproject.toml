@@ -16,7 +16,7 @@ authors = [
 maintainers = [
   {name = "Michael Fienen", email = "mnfienen@usgs.gov"}
 ]
-readme = "README.md"
+readme = "Readme.md"
 keywords = ["streamflow depletion", "analytical solutions","drawdown", "groundwater", "hydrogeology"]
 license-files = [
     "LICENSE.md"
