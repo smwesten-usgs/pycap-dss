@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "pycap-dss"
 description = "long_description.rst"
-dynamic = ["version"]
+version = "1.0.1"
 authors = [
   {name = "Michael Fienen", email = "mnfienen@usgs.gov"},
   {name = "Aaron Pruitt", email = "Aaron.Pruitt@wisconsin.gov"},
@@ -16,7 +16,7 @@ authors = [
 maintainers = [
   {name = "Michael Fienen", email = "mnfienen@usgs.gov"}
 ]
-readme = "Readme.md"
+readme = "README.md"
 keywords = ["streamflow depletion", "analytical solutions","drawdown", "groundwater", "hydrogeology"]
 license-files = [
     "LICENSE.md"
@@ -71,13 +71,13 @@ docs = [
 "sphinx-copybutton",
 "sphinx_rtd_theme"
 ]
-[tool.versioneer]
-VCS = "git"
-style = "pep440"
-versionfile_source = "pycap/_version.py"
-versionfile_build = "pycap/_version.py"
-tag_prefix = ""
-parentdir_prefix = "pycap-"
+# [tool.versioneer]
+# VCS = "git"
+# style = "pep440"
+# versionfile_source = "pycap/_version.py"
+# versionfile_build = "pycap/_version.py"
+# tag_prefix = ""
+# parentdir_prefix = "pycap-"
 
 [project.urls]
 documentation = "https://doi-usgs.github.io/pycap-dss/latest/"
