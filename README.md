@@ -6,9 +6,7 @@ For current development version please go to: https://github.com/DOI-USGS/pycap-
 
 Version 1.0.5
 -------------
-[![DOI](https://zenodo.org/badge/DOI/10.5066/P13XHZ9J.svg)](https://doi.org/10.5066/P13XHZ9J)
 ![Tests](https://github.com/doi-usgs/pycap-dss/actions/workflows/test.yaml/badge.svg)
-[![codecov](https://codecov.io/gh/doi-usgs/pycap-dss/branch/main/graph/badge.svg?token=aWN47DYeIv)](https://codecov.io/gh/doi-usgs/pycap-dss)
 [![PyPI version](https://badge.fury.io/py/pycap-dss.svg)](https://badge.fury.io/py/pycap-dss)
 [![Conda Version](https://img.shields.io/conda/vn/conda-forge/pycap-dss.svg)](https://anaconda.org/conda-forge/pycap-dss)
 [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
