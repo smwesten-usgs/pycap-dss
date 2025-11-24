@@ -110,7 +110,7 @@ def _print_combined_well_results(ofp, cw_dat):
 
 
 class Project:
-    def __init__(self, ymlfile):
+    def __init__(self, ymlfile, write_results_to_files=True):
         """
         Highest-level Class for a well drawdown and/or depletion analysis.
         This Class is developed for the specific analysis needs of the
@@ -123,9 +123,12 @@ class Project:
         ----------
         ymlfile: string or pathlib.Path
             Path to a yml file containing configuration information for a project.
-
+        write_results_to_files: Bool
+            True means all output files are written to disk. False means results are
+            only held in memory and not written. Default is True
 
         """
+        self.write_results_to_files = write_results_to_files
         self.status_categories = [
             "existing",
             "active",
@@ -216,9 +219,9 @@ class Project:
 
         # create well objects
         self._create_well_objects()
-
         # report out on yaml input to screen and logfile
-        self._report_yaml_input()
+        if self.write_responses_csv:
+            self._report_yaml_input()
 
     def _parse_project_properties(self, pp):
         """Method to parse all the project properties from the YAML file block
@@ -795,17 +798,22 @@ class Project:
             outfile = ymlbase.replace(".yml", ".table_report.csv")
 
             self.csv_output_filename = self.outpath / outfile
-            agg_df.to_csv(self.csv_output_filename)
+
+            if self.write_responses_csv:
+                agg_df.to_csv(self.csv_output_filename)
             # slap the csv dataframes into self
             self.agg_df = agg_df
+
             self.csv_stream_output_filename = self.outpath / outfile.replace(
                 ".csv", ".base_stream_depletion.csv"
             )
-            agg_base_stream_df.to_csv(self.csv_stream_output_filename)
+            if self.write_responses_csv:
+                agg_base_stream_df.to_csv(self.csv_stream_output_filename)
             self.csv_stream_output_ts_filename = (
                 self.outpath / outfile.replace(".csv", ".all_ts.csv")
             )
-            self.all_depl_ts.to_csv(self.csv_stream_output_ts_filename)
+            if self.write_responses_csv:
+                self.all_depl_ts.to_csv(self.csv_stream_output_ts_filename)
 
             self.agg_base_stream_df = agg_base_stream_df
 
@@ -832,8 +840,11 @@ class Project:
             outfile = ymlbase.replace(".yml", ".table_report.csv")
             # make a home for the report file
             outpath = self.ymlfile.parent / "output"
-            if not os.path.exists(outpath):
-                os.mkdir(outpath)
-
             self.csv_output_filename = outpath / outfile
-            agg_df.to_csv(self.csv_output_filename)
+            if self.write_responses_csv:
+                if not os.path.exists(outpath):
+                    os.mkdir(outpath)
+
+                agg_df.to_csv(self.csv_output_filename)
+            # save the dataframe of results into self.
+            self.agg_df = agg_df
