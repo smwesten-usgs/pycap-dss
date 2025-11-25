@@ -3,6 +3,14 @@ pycap-dss
 
 For current development version please go to: https://github.com/DOI-USGS/pycap-dss  
 
+
+Version 1.0.5
+-------------
+![Tests](https://github.com/doi-usgs/pycap-dss/actions/workflows/test.yaml/badge.svg)
+[![PyPI version](https://badge.fury.io/py/pycap-dss.svg)](https://badge.fury.io/py/pycap-dss)
+[![Conda Version](https://img.shields.io/conda/vn/conda-forge/pycap-dss.svg)](https://anaconda.org/conda-forge/pycap-dss)
+[![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
+
 Python Decision Support System Tool for estimating High Capacity Well Responses
 -------------------------------------------------------------------------------
 

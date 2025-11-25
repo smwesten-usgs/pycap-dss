@@ -547,6 +547,30 @@ def test_run_yml_example():
     ap.report_responses()
     ap.write_responses_csv()
 
+def test_run_in_memory_example():
+    from pycap.analysis_project import Project
+    import yaml
+    yml_file = "example.yml"
+    with open(datapath / yml_file) as ifp:  
+        proj_dict = yaml.safe_load(ifp)
+
+    ap = Project(None, 
+                 write_results_to_files=False, 
+                 project_dict=proj_dict)
+    ap.aggregate_results()
+    ap.write_responses_csv()
+
+    # now read in and compare results
+    agg_df = pd.read_csv(datapath / "output" / "example.table_report.csv", index_col=0)
+    assert np.allclose(agg_df.values.astype(np.float64),
+                        ap.agg_df.values.astype(np.float64))
+    agg_base_stream_df = pd.read_csv(datapath / "output" / "example.table_report.base_stream_depletion.csv", index_col=0)
+    assert np.allclose(agg_base_stream_df.values.astype(np.float64)
+                    ,ap.agg_base_stream_df.values.astype(np.float64))
+        
+    all_depl_ts = pd.read_csv(datapath / "output" / "example.table_report.all_ts.csv", index_col=0)
+    assert np.allclose(all_depl_ts.values.astype(np.float64),
+                           ap.all_depl_ts.values.astype(np.float64))
 
 def test_hunt_99_depletion_results_multiple_times():
     """Test of hunt_99_depletion() function in the
