@@ -168,6 +168,7 @@ class Project:
                 d = yaml.safe_load(ifp)
         elif project_dict is not None:
             d = project_dict
+            self.ymlfile = "default.yml"
         else:
             raise (
                 "Must either provide a YML file or a project dictionary"
