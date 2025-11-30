@@ -565,8 +565,8 @@ def test_run_in_memory_example():
     assert np.allclose(agg_df.values.astype(np.float64),
                         ap.agg_df.values.astype(np.float64))
     agg_base_stream_df = pd.read_csv(datapath / "output" / "example.table_report.base_stream_depletion.csv", index_col=0)
-    assert np.allclose(agg_base_stream_df.values.astype(np.float64)
-                    ,ap.agg_base_stream_df.values.astype(np.float64))
+    assert np.allclose(agg_base_stream_df.values.astype(np.float64),
+                    ap.agg_base_stream_df.values.astype(np.float64))
         
     all_depl_ts = pd.read_csv(datapath / "output" / "example.table_report.all_ts.csv", index_col=0)
     assert np.allclose(all_depl_ts.values.astype(np.float64),
