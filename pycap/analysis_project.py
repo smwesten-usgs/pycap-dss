@@ -4,7 +4,7 @@ from math import asin, cos, radians, sin, sqrt
 import numpy as np
 import pandas as pd
 import yaml
-
+from pathlib import Path
 from pycap.solutions import GPM2CFD
 from pycap.utilities import Q2ts
 from pycap.wells import Well
@@ -168,7 +168,7 @@ class Project:
                 d = yaml.safe_load(ifp)
         elif project_dict is not None:
             d = project_dict
-            self.ymlfile = "default.yml"
+            self.ymlfile = Path("./default.yml")
         else:
             raise (
                 "Must either provide a YML file or a project dictionary"
