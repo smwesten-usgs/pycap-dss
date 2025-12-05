@@ -903,6 +903,35 @@ def test_ward_lough_depletion(ward_lough_test_data):
     )
 
 
+def test_ward_lough_depletion_scalar_time(ward_lough_test_data):
+    """Test that ward_lough_depletion works with scalar time values.
+
+    This is a regression test for a bug where scalar time values would
+    return None instead of computing the depletion value.
+    """
+    allpars = ward_lough_test_data["params"]
+    allpars["aquitard_thick"] = 1
+
+    # Test with a single scalar time value
+    scalar_time = 100.0
+    allpars["time"] = scalar_time
+    result_scalar = pycap.ward_lough_depletion(**allpars)
+
+    # Compare with array result at the same time
+    allpars["time"] = np.array([scalar_time])
+    result_array = pycap.ward_lough_depletion(**allpars)
+
+    # Scalar result should match the single element from array result
+    assert result_scalar is not None, "Scalar time should return a value, not None"
+    assert np.isclose(result_scalar, result_array[0]), \
+        f"Scalar result {result_scalar} should match array result {result_array[0]}"
+
+    # Test that time=0 returns 0
+    allpars["time"] = 0
+    result_zero = pycap.ward_lough_depletion(**allpars)
+    assert result_zero == 0, "Time=0 should return 0"
+
+
 def test_ward_lough_drawdown(ward_lough_test_data):
     # note: the parameters defined below are intended to result in the nondimensional
     # parameters corresponding with Fig. 3 in DOI: 10.1061/ (ASCE)HE.1943-5584.0000382.

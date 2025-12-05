@@ -1147,25 +1147,37 @@ def ward_lough_depletion(
     )
 
     # Inverse Fourier transform
+    # Handle scalar time values
     if isinstance(t, int) or isinstance(t, float):
         if t == 0:
             return 0
-    else:
-        if isinstance(t, list):
-            t = np.array(t)
-        DeltaQ = np.zeros_like(t)
-        DeltaQ[t != 0] = _StehfestCoeff(1, NSteh1) * _if1_dQ(
-            T1, S1, K, lambd, np.log(2) / t[t != 0]
+        # Compute for scalar time
+        DeltaQ = _StehfestCoeff(1, NSteh1) * _if1_dQ(
+            T1, S1, K, lambd, np.log(2) / t
         )
         for jj in range(2, NSteh1 + 1):
-            DeltaQ[t != 0] += _StehfestCoeff(jj, NSteh1) * _if1_dQ(
-                T1, S1, K, lambd, jj * np.log(2) / t[t != 0]
+            DeltaQ += _StehfestCoeff(jj, NSteh1) * _if1_dQ(
+                T1, S1, K, lambd, jj * np.log(2) / t
             )
-        DeltaQ[t != 0] = (
-            2 * np.pi * lambd * DeltaQ[t != 0] * np.log(2) / t[t != 0]
-        )
+        DeltaQ = 2 * np.pi * lambd * DeltaQ * np.log(2) / t
+        return DeltaQ * Q  # redimensionalize
 
-        return DeltaQ * Q  # redimentionalize
+    # Handle array/list time values
+    if isinstance(t, list):
+        t = np.array(t)
+    DeltaQ = np.zeros_like(t)
+    DeltaQ[t != 0] = _StehfestCoeff(1, NSteh1) * _if1_dQ(
+        T1, S1, K, lambd, np.log(2) / t[t != 0]
+    )
+    for jj in range(2, NSteh1 + 1):
+        DeltaQ[t != 0] += _StehfestCoeff(jj, NSteh1) * _if1_dQ(
+            T1, S1, K, lambd, jj * np.log(2) / t[t != 0]
+        )
+    DeltaQ[t != 0] = (
+        2 * np.pi * lambd * DeltaQ[t != 0] * np.log(2) / t[t != 0]
+    )
+
+    return DeltaQ * Q  # redimensionalize
 
 
 def _if1_dQ(T1, S1, K, lambda_, p):
