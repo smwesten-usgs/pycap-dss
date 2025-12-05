@@ -319,7 +319,7 @@ def _ddwn2(theta, dist, x, y, T, streambed, time, S):
 def ward_lough_drawdown(
     T1,
     S1,
-    t,
+    time,
     dist,
     Q,
     T2=None,
@@ -356,7 +356,7 @@ def ward_lough_drawdown(
     S: float
         Specific yield for upper aquifer [unitless]
         (S1 in the original paper)
-    t: float, optionally np.array or list
+    time: float, optionally np.array or list
         time at which to calculate results [T]
     dist: Distance between pumping well and stream [L]
         (L in the original paper)
@@ -401,7 +401,7 @@ def ward_lough_drawdown(
         stream width (b in paper) [L]
 
     """
-    t = _make_arrays(t)
+    time = _make_arrays(time)
     dist = _make_arrays(dist)
     if len(dist) > 1:
         PycapException(
@@ -437,7 +437,7 @@ def ward_lough_drawdown(
         streambed_K,
         aquitard_thick,
         aquitard_K,
-        t,
+        time,
         x,
         y,
     )
@@ -1045,7 +1045,7 @@ def _WardLoughNonDimensionalize(
 def ward_lough_depletion(
     T1,
     S1,
-    t,
+    time,
     dist,
     Q,
     T2=None,
@@ -1141,31 +1141,43 @@ def ward_lough_depletion(
         streambed_K,
         aquitard_thick,
         aquitard_K,
-        t,
+        time,
         0,
         0,
     )
 
     # Inverse Fourier transform
+    # Handle scalar time values
     if isinstance(t, int) or isinstance(t, float):
         if t == 0:
             return 0
-    else:
-        if isinstance(t, list):
-            t = np.array(t)
-        DeltaQ = np.zeros_like(t)
-        DeltaQ[t != 0] = _StehfestCoeff(1, NSteh1) * _if1_dQ(
-            T1, S1, K, lambd, np.log(2) / t[t != 0]
+        # Compute for scalar time
+        DeltaQ = _StehfestCoeff(1, NSteh1) * _if1_dQ(
+            T1, S1, K, lambd, np.log(2) / t
         )
         for jj in range(2, NSteh1 + 1):
-            DeltaQ[t != 0] += _StehfestCoeff(jj, NSteh1) * _if1_dQ(
-                T1, S1, K, lambd, jj * np.log(2) / t[t != 0]
+            DeltaQ += _StehfestCoeff(jj, NSteh1) * _if1_dQ(
+                T1, S1, K, lambd, jj * np.log(2) / t
             )
-        DeltaQ[t != 0] = (
-            2 * np.pi * lambd * DeltaQ[t != 0] * np.log(2) / t[t != 0]
-        )
+        DeltaQ = 2 * np.pi * lambd * DeltaQ * np.log(2) / t
+        return DeltaQ * Q  # redimensionalize
 
-        return DeltaQ * Q  # redimentionalize
+    # Handle array/list time values
+    if isinstance(t, list):
+        t = np.array(t)
+    DeltaQ = np.zeros_like(t)
+    DeltaQ[t != 0] = _StehfestCoeff(1, NSteh1) * _if1_dQ(
+        T1, S1, K, lambd, np.log(2) / t[t != 0]
+    )
+    for jj in range(2, NSteh1 + 1):
+        DeltaQ[t != 0] += _StehfestCoeff(jj, NSteh1) * _if1_dQ(
+            T1, S1, K, lambd, jj * np.log(2) / t[t != 0]
+        )
+    DeltaQ[t != 0] = (
+        2 * np.pi * lambd * DeltaQ[t != 0] * np.log(2) / t[t != 0]
+    )
+
+    return DeltaQ * Q  # redimensionalize
 
 
 def _if1_dQ(T1, S1, K, lambda_, p):

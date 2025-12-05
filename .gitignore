@@ -133,3 +133,7 @@ dmypy.json
 # Reeves
 prototypes/
 modflow_working/
+
+# Test output files
+*.import_report
+pycap/tests/data/output/

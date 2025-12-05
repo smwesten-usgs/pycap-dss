@@ -886,9 +886,9 @@ def test_ward_lough_depletion(ward_lough_test_data):
     allpars["aquitard_thick"] = 1
     dQ1_test = ward_lough_test_data["dQ1_test"]
     dQ2_test = ward_lough_test_data["dQ2_test"]
-    allpars["t"] = dQ2_test.index * 100
+    allpars["time"] = dQ2_test.index * 100
     dQ2_test["mod"] = pycap.ward_lough_depletion(**allpars)
-    allpars["t"] = dQ1_test.index * 100
+    allpars["time"] = dQ1_test.index * 100
     allpars["T1"] = 0.01
     allpars.pop("x")
     allpars.pop("y")
@@ -903,15 +903,44 @@ def test_ward_lough_depletion(ward_lough_test_data):
     )
 
 
+def test_ward_lough_depletion_scalar_time(ward_lough_test_data):
+    """Test that ward_lough_depletion works with scalar time values.
+
+    This is a regression test for a bug where scalar time values would
+    return None instead of computing the depletion value.
+    """
+    allpars = ward_lough_test_data["params"]
+    allpars["aquitard_thick"] = 1
+
+    # Test with a single scalar time value
+    scalar_time = 100.0
+    allpars["time"] = scalar_time
+    result_scalar = pycap.ward_lough_depletion(**allpars)
+
+    # Compare with array result at the same time
+    allpars["time"] = np.array([scalar_time])
+    result_array = pycap.ward_lough_depletion(**allpars)
+
+    # Scalar result should match the single element from array result
+    assert result_scalar is not None, "Scalar time should return a value, not None"
+    assert np.isclose(result_scalar, result_array[0]), \
+        f"Scalar result {result_scalar} should match array result {result_array[0]}"
+
+    # Test that time=0 returns 0
+    allpars["time"] = 0
+    result_zero = pycap.ward_lough_depletion(**allpars)
+    assert result_zero == 0, "Time=0 should return 0"
+
+
 def test_ward_lough_drawdown(ward_lough_test_data):
     # note: the parameters defined below are intended to result in the nondimensional
     # parameters corresponding with Fig. 3 in DOI: 10.1061/ (ASCE)HE.1943-5584.0000382.
     allpars = ward_lough_test_data["params"]
     s1_test = ward_lough_test_data["s1_test"]
     s2_test = ward_lough_test_data["s2_test"]
-    allpars["t"] = s1_test.index * 100
+    allpars["time"] = s1_test.index * 100
     s1_test["mod"] = pycap.ward_lough_drawdown(**allpars)[:, 0]
-    allpars["t"] = s2_test.index * 100
+    allpars["time"] = s2_test.index * 100
     s2_test["mod"] = pycap.ward_lough_drawdown(**allpars)[:, 1]
     assert np.allclose(
         s1_test["mod"] * allpars["T2"] / allpars["Q"], s1_test["s"], atol=0.035
@@ -937,7 +966,7 @@ def test_complex_well(ward_lough_test_data):
     # get the test parameters
     allpars = ward_lough_test_data["params"]
     # now run the base solutions for comparisons
-    allpars["t"] = list(range(365))
+    allpars["time"] = list(range(365))
     dep1 = ward_lough_depletion(**allpars)
 
     # now configure for running through Well object
@@ -950,7 +979,7 @@ def test_complex_well(ward_lough_test_data):
     allpars["Q"] = pycap.Q2ts(365, 1, allpars["Q"])
     allpars.pop("T1")
     allpars.pop("S1")
-    allpars.pop("t")
+    allpars.pop("time")
     allpars.pop("dist")
 
     w = Well(
