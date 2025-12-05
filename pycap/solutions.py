@@ -319,7 +319,7 @@ def _ddwn2(theta, dist, x, y, T, streambed, time, S):
 def ward_lough_drawdown(
     T1,
     S1,
-    t,
+    time,
     dist,
     Q,
     T2=None,
@@ -356,7 +356,7 @@ def ward_lough_drawdown(
     S: float
         Specific yield for upper aquifer [unitless]
         (S1 in the original paper)
-    t: float, optionally np.array or list
+    time: float, optionally np.array or list
         time at which to calculate results [T]
     dist: Distance between pumping well and stream [L]
         (L in the original paper)
@@ -401,7 +401,7 @@ def ward_lough_drawdown(
         stream width (b in paper) [L]
 
     """
-    t = _make_arrays(t)
+    time = _make_arrays(time)
     dist = _make_arrays(dist)
     if len(dist) > 1:
         PycapException(
@@ -437,7 +437,7 @@ def ward_lough_drawdown(
         streambed_K,
         aquitard_thick,
         aquitard_K,
-        t,
+        time,
         x,
         y,
     )
@@ -1045,7 +1045,7 @@ def _WardLoughNonDimensionalize(
 def ward_lough_depletion(
     T1,
     S1,
-    t,
+    time,
     dist,
     Q,
     T2=None,
@@ -1141,7 +1141,7 @@ def ward_lough_depletion(
         streambed_K,
         aquitard_thick,
         aquitard_K,
-        t,
+        time,
         0,
         0,
     )

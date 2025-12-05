@@ -886,9 +886,9 @@ def test_ward_lough_depletion(ward_lough_test_data):
     allpars["aquitard_thick"] = 1
     dQ1_test = ward_lough_test_data["dQ1_test"]
     dQ2_test = ward_lough_test_data["dQ2_test"]
-    allpars["t"] = dQ2_test.index * 100
+    allpars["time"] = dQ2_test.index * 100
     dQ2_test["mod"] = pycap.ward_lough_depletion(**allpars)
-    allpars["t"] = dQ1_test.index * 100
+    allpars["time"] = dQ1_test.index * 100
     allpars["T1"] = 0.01
     allpars.pop("x")
     allpars.pop("y")
@@ -909,9 +909,9 @@ def test_ward_lough_drawdown(ward_lough_test_data):
     allpars = ward_lough_test_data["params"]
     s1_test = ward_lough_test_data["s1_test"]
     s2_test = ward_lough_test_data["s2_test"]
-    allpars["t"] = s1_test.index * 100
+    allpars["time"] = s1_test.index * 100
     s1_test["mod"] = pycap.ward_lough_drawdown(**allpars)[:, 0]
-    allpars["t"] = s2_test.index * 100
+    allpars["time"] = s2_test.index * 100
     s2_test["mod"] = pycap.ward_lough_drawdown(**allpars)[:, 1]
     assert np.allclose(
         s1_test["mod"] * allpars["T2"] / allpars["Q"], s1_test["s"], atol=0.035
@@ -937,7 +937,7 @@ def test_complex_well(ward_lough_test_data):
     # get the test parameters
     allpars = ward_lough_test_data["params"]
     # now run the base solutions for comparisons
-    allpars["t"] = list(range(365))
+    allpars["time"] = list(range(365))
     dep1 = ward_lough_depletion(**allpars)
 
     # now configure for running through Well object
@@ -950,7 +950,7 @@ def test_complex_well(ward_lough_test_data):
     allpars["Q"] = pycap.Q2ts(365, 1, allpars["Q"])
     allpars.pop("T1")
     allpars.pop("S1")
-    allpars.pop("t")
+    allpars.pop("time")
     allpars.pop("dist")
 
     w = Well(
