@@ -316,7 +316,7 @@ def _ddwn2(theta, dist, x, y, T, streambed, time, S):
     return np.exp(-theta) * sps.exp1(u2)
 
 
-def ward_lough_drawdown(
+def dudley_ward_lough_drawdown(
     T1,
     S1,
     time,
@@ -335,15 +335,15 @@ def ward_lough_drawdown(
     NSteh2=2,
     **kwargs,
 ):
-    """Compute drawdown using Ward and Lough (2011) solution
+    """Compute drawdown using Dudley Ward and Lough (2011) solution
 
-        Ward and Lough (2011) presented a solution for streamflow depletion
+        Dudley Ward and Lough (2011) presented a solution for streamflow depletion
         by a pumping well in a layered aquifer system.  The stream
         is in the upper aquifer, and the pumping well is in a lower
         aquifer that is separated from the upper aquifer by a
         semi-confining aquitard layer.
 
-        Ward, N.D.,and Lough, H., 2011, Stream depletion from pumping a
+        Dudley Ward, N.,and Lough, H., 2011, Stream depletion from pumping a
         semiconfined aquifer in a two-layer leaky aquifer system (technical note):
         Journal of Hydrologic Engineering ASCE, v. 16, no. 11, pgs. 955-959,
         https://doi.org/10.1061/(ASCE)HE.1943-5584.0000382.
@@ -405,12 +405,12 @@ def ward_lough_drawdown(
     dist = _make_arrays(dist)
     if len(dist) > 1:
         PycapException(
-            "ward_lough_drawdown can only accept a single distance argument"
+            "dudley_ward_lough_drawdown can only accept a single distance argument"
         )
     _check_nones(
         locals(),
         {
-            "ward_lough_drawdown": [
+            "dudley_ward_lough_drawdown": [
                 "T2",
                 "S2",
                 "width",
@@ -425,7 +425,7 @@ def ward_lough_drawdown(
     )
 
     # first nondimensionalize all the parameters
-    x, y, t, T1, S1, K, lambd = _WardLoughNonDimensionalize(
+    x, y, t, T1, S1, K, lambd = _DudleyWardLoughNonDimensionalize(
         T1,
         T2,
         S1,
@@ -1012,7 +1012,7 @@ def _calc_deltaQ(Q):
     return deltaQ
 
 
-def _WardLoughNonDimensionalize(
+def _DudleyWardLoughNonDimensionalize(
     T1,
     T2,
     S1,
@@ -1028,7 +1028,7 @@ def _WardLoughNonDimensionalize(
     x=0,
     y=0,
 ):
-    """Internal function to make non-dimensional groups for Ward and Lough solution"""
+    """Internal function to make non-dimensional groups for Dudley Ward and Lough solution"""
     t = np.array(t)  # make sure not passing a list
     if x is not None:
         x /= dist
@@ -1042,7 +1042,7 @@ def _WardLoughNonDimensionalize(
     return x, y, t, T1, S1, K, lambd
 
 
-def ward_lough_depletion(
+def dudley_ward_lough_depletion(
     T1,
     S1,
     time,
@@ -1059,15 +1059,15 @@ def ward_lough_depletion(
     **kwargs,
 ):
     """
-    Compute streamflow depletion using Ward and Lough (2011) solution
+    Compute streamflow depletion using Dudley Ward and Lough (2011) solution
 
-    Ward and Lough (2011) presented a solution for streamflow depletion
+    Dudley Ward and Lough (2011) presented a solution for streamflow depletion
     by a pumping well in a layered aquifer system.  The stream
     is in the upper aquifer, and the pumping well is in a lower
     aquifer that is separated from the upper aquifer by a
     semi-confining aquitard layer.
 
-    Ward, N.D.,and Lough, H., 2011, Stream depletion from pumping a
+    Dudley Ward, N.,and Lough, H., 2011, Stream depletion from pumping a
     semiconfined aquifer in a two-layer leaky aquifer system (techical note):
     Journal of Hydrologic Engineering ASCE, v. 16, no. 11, pgs. 955-959,
     https://doi.org/10.1061/(ASCE)HE.1943-5584.0000382.
@@ -1117,7 +1117,7 @@ def ward_lough_depletion(
     _check_nones(
         locals(),
         {
-            "ward_lough_depletion": [
+            "dudley_ward_lough_depletion": [
                 "T2",
                 "S2",
                 "width",
@@ -1129,7 +1129,7 @@ def ward_lough_depletion(
         },
     )
     # first nondimensionalize all the parameters
-    x, y, t, T1, S1, K, lambd = _WardLoughNonDimensionalize(
+    x, y, t, T1, S1, K, lambd = _DudleyWardLoughNonDimensionalize(
         T1,
         T2,
         S1,
@@ -1181,14 +1181,14 @@ def ward_lough_depletion(
 
 
 def _if1_dQ(T1, S1, K, lambda_, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     return _kernel1(T1, S1, K, lambda_, 0, 0, p) + _kernel2(
         T1, S1, K, lambda_, 0, 0, p
     )
 
 
 def _if1(T1, S1, K, lambd, x, y, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     G = (
         lambda phi: 2
         * (
@@ -1206,7 +1206,7 @@ def _if1(T1, S1, K, lambd, x, y, p):
 
 
 def _if2(T1, S1, K, lambd, x, y, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     H = (
         lambda phi: 2
         * (
@@ -1226,7 +1226,7 @@ def _if2(T1, S1, K, lambd, x, y, p):
 
 
 def _coeff_s1_1(T1, S1, K, lambd, theta, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     b11, b12, b22, mu1, mu2, l1, l2, beta1, beta2, A1, A2 = _coeffs(
         T1, S1, K, lambd, theta, p
     )
@@ -1235,7 +1235,7 @@ def _coeff_s1_1(T1, S1, K, lambd, theta, p):
 
 
 def _coeff_s1_2(T1, S1, K, lambd, theta, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     b11, b12, b22, mu1, mu2, l1, l2, beta1, beta2, A1, A2 = _coeffs(
         T1, S1, K, lambd, theta, p
     )
@@ -1244,7 +1244,7 @@ def _coeff_s1_2(T1, S1, K, lambd, theta, p):
 
 
 def _kernel1(T1, S1, K, lambd, x, theta_or_y, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     b11, b12, b22, mu1, mu2, l1, l2, beta1, beta2, A1, A2 = _coeffs(
         T1, S1, K, lambd, theta_or_y, p
     )
@@ -1263,7 +1263,7 @@ def _kernel1(T1, S1, K, lambd, x, theta_or_y, p):
 
 
 def _kernel2(T1, S1, K, lambd, x, theta_or_y, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     b11, b12, b22, mu1, mu2, l1, l2, beta1, beta2, A1, A2 = _coeffs(
         T1, S1, K, lambd, theta_or_y, p
     )
@@ -1282,7 +1282,7 @@ def _kernel2(T1, S1, K, lambd, x, theta_or_y, p):
 
 
 def _coeffs(T1, S1, K, lambd, theta_or_y, p):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     b11 = T1 * theta_or_y**2 + S1 * p + K
     b12 = -K
     b22 = theta_or_y**2 + p + K
@@ -1335,7 +1335,7 @@ def _safe_factorial(n):
 
 
 def _StehfestCoeff(jj, N):
-    """Internal function for Ward and Lough (2011) solution"""
+    """Internal function for Dudley Ward and Lough (2011) solution"""
     LowerLimit = (jj + 1) // 2
     UpperLimit = min(jj, N // 2)
 
@@ -1360,7 +1360,7 @@ def _StehfestCoeff(jj, N):
 ALL_DD_METHODS = {
     "theis_drawdown": theis_drawdown,
     "hunt_99_drawdown": hunt_99_drawdown,
-    "ward_lough_drawdown": ward_lough_drawdown,
+    "dudley_ward_lough_drawdown": dudley_ward_lough_drawdown,
 }
 
 ALL_DEPL_METHODS = {
@@ -1368,7 +1368,7 @@ ALL_DEPL_METHODS = {
     "walton_depletion": walton_depletion,
     "hunt_99_depletion": hunt_99_depletion,
     "hunt_03_depletion": hunt_03_depletion,
-    "ward_lough_depletion": ward_lough_depletion,
+    "dudley_ward_lough_depletion": dudley_ward_lough_depletion,
 }
 
 GPM2CFD = 60 * 24 / 7.48  # factor to convert from GPM to CFD

@@ -13,8 +13,8 @@ from .solutions import (
     sdf,
     theis_drawdown,
     walton_depletion,
-    ward_lough_depletion,
-    ward_lough_drawdown,
+    dudley_ward_lough_depletion,
+    dudley_ward_lough_drawdown,
 )
 from .utilities import (
     Q2ts,

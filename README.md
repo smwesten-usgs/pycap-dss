@@ -4,7 +4,7 @@ pycap-dss
 For current development version please go to: https://github.com/DOI-USGS/pycap-dss  
 
 
-Version 1.1.2
+Version 1.2.0
 -------------
 ![Tests](https://github.com/doi-usgs/pycap-dss/actions/workflows/test.yaml/badge.svg)
 [![PyPI version](https://badge.fury.io/py/pycap-dss.svg)](https://badge.fury.io/py/pycap-dss)
