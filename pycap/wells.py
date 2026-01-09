@@ -77,7 +77,7 @@ class WellResponse:
             Streambed conductance for the hunt_99_depletion depletion method [L/T].
             Defaults to None
 
-        Additional Parameters Used by Hunt and Ward/Lough Solutions
+        Additional Parameters Used by Hunt and Dudley Ward/Lough Solutions
         -----------------------------------------------------------
         Bprime: float
             saturated thickness of semiconfining layer containing stream, [L]
@@ -97,7 +97,7 @@ class WellResponse:
             y-coordinate of drawdown location
             (with origin being y=0 at pumping well location) [L]
 
-        Additional Parameters Used by Ward/Lough Solutions
+        Additional Parameters Used by Dudley Ward/Lough Solutions
         --------------------------------------------------
         T2: float
             Transmissivity of deeper system
@@ -302,13 +302,13 @@ class Well:
         drawdown_method: string, optional
             Method to be used for drawdown calculations. Defaults to 'theis_drawdown'.
             Only 'theis_drawdown' is available right now in the Well() class, if
-            Hunt (1999) or Ward and Lough (2014) are desired, the function
+            Hunt (1999) or Dudley Ward and Lough (2014) are desired, the function
             must be called directly
         streambed_conductance: float
             Streambed conductance for the hunt_99_depletion depletion method [L/T].
             Defaults to None
 
-        Additional Parameters Used by Hunt and Ward/Lough Solutions
+        Additional Parameters Used by Hunt and Dudley Ward/Lough Solutions
         -----------------------------------------------------------
         Bprime: float
             saturated thickness of semiconfining layer containing stream, [L]
@@ -328,7 +328,7 @@ class Well:
             y-coordinate of drawdown location
             (with origin being y=0 at pumping well location) [L]
 
-        Additional Parameters Used by Ward/Lough Solutions
+        Additional Parameters Used by Dudley Ward/Lough Solutions
         --------------------------------------------------
         T2: float
             Transmissivity of deeper system

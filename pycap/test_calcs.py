@@ -52,7 +52,7 @@ def theis_results():
 
 
 @pytest.fixture
-def ward_lough_test_data():
+def dudley_ward_lough_test_data():
     s1_test = pd.read_csv(datapath / "s1_test.csv", index_col=0)
     s2_test = pd.read_csv(datapath / "s2_test.csv", index_col=0)
     dQ1_test = pd.read_csv(datapath / "dQ1_test.csv", index_col=0)
@@ -879,21 +879,21 @@ def test_transient_dd():
     pd.read_csv(ap.csv_output_filename, index_col=0)
 
 
-def test_ward_lough_depletion(ward_lough_test_data):
+def test_dudley_ward_lough_depletion(dudley_ward_lough_test_data):
     # note: the parameters defined below are intended to result in the nondimensional
     # parameters corresponding with Fig. 6 in DOI: 10.1061/ (ASCE)HE.1943-5584.0000382.
-    allpars = ward_lough_test_data["params"]
+    allpars = dudley_ward_lough_test_data["params"]
     allpars["aquitard_thick"] = 1
-    dQ1_test = ward_lough_test_data["dQ1_test"]
-    dQ2_test = ward_lough_test_data["dQ2_test"]
+    dQ1_test = dudley_ward_lough_test_data["dQ1_test"]
+    dQ2_test = dudley_ward_lough_test_data["dQ2_test"]
     allpars["time"] = dQ2_test.index * 100
-    dQ2_test["mod"] = pycap.ward_lough_depletion(**allpars)
+    dQ2_test["mod"] = pycap.dudley_ward_lough_depletion(**allpars)
     allpars["time"] = dQ1_test.index * 100
     allpars["T1"] = 0.01
     allpars.pop("x")
     allpars.pop("y")
     allpars["aquitard_K"] = 0.001
-    dQ1_test["mod"] = pycap.ward_lough_depletion(**allpars)
+    dQ1_test["mod"] = pycap.dudley_ward_lough_depletion(**allpars)
     assert np.allclose(
         dQ1_test["mod"] / allpars["Q"], dQ1_test["dQ"], atol=0.1
     )
@@ -903,23 +903,23 @@ def test_ward_lough_depletion(ward_lough_test_data):
     )
 
 
-def test_ward_lough_depletion_scalar_time(ward_lough_test_data):
-    """Test that ward_lough_depletion works with scalar time values.
+def test_dudley_ward_lough_depletion_scalar_time(dudley_ward_lough_test_data):
+    """Test that dudley_ward_lough_depletion works with scalar time values.
 
     This is a regression test for a bug where scalar time values would
     return None instead of computing the depletion value.
     """
-    allpars = ward_lough_test_data["params"]
+    allpars = dudley_ward_lough_test_data["params"]
     allpars["aquitard_thick"] = 1
 
     # Test with a single scalar time value
     scalar_time = 100.0
     allpars["time"] = scalar_time
-    result_scalar = pycap.ward_lough_depletion(**allpars)
+    result_scalar = pycap.dudley_ward_lough_depletion(**allpars)
 
     # Compare with array result at the same time
     allpars["time"] = np.array([scalar_time])
-    result_array = pycap.ward_lough_depletion(**allpars)
+    result_array = pycap.dudley_ward_lough_depletion(**allpars)
 
     # Scalar result should match the single element from array result
     assert result_scalar is not None, "Scalar time should return a value, not None"
@@ -928,20 +928,20 @@ def test_ward_lough_depletion_scalar_time(ward_lough_test_data):
 
     # Test that time=0 returns 0
     allpars["time"] = 0
-    result_zero = pycap.ward_lough_depletion(**allpars)
+    result_zero = pycap.dudley_ward_lough_depletion(**allpars)
     assert result_zero == 0, "Time=0 should return 0"
 
 
-def test_ward_lough_drawdown(ward_lough_test_data):
+def test_dudley_ward_lough_drawdown(dudley_ward_lough_test_data):
     # note: the parameters defined below are intended to result in the nondimensional
     # parameters corresponding with Fig. 3 in DOI: 10.1061/ (ASCE)HE.1943-5584.0000382.
-    allpars = ward_lough_test_data["params"]
-    s1_test = ward_lough_test_data["s1_test"]
-    s2_test = ward_lough_test_data["s2_test"]
+    allpars = dudley_ward_lough_test_data["params"]
+    s1_test = dudley_ward_lough_test_data["s1_test"]
+    s2_test = dudley_ward_lough_test_data["s2_test"]
     allpars["time"] = s1_test.index * 100
-    s1_test["mod"] = pycap.ward_lough_drawdown(**allpars)[:, 0]
+    s1_test["mod"] = pycap.dudley_ward_lough_drawdown(**allpars)[:, 0]
     allpars["time"] = s2_test.index * 100
-    s2_test["mod"] = pycap.ward_lough_drawdown(**allpars)[:, 1]
+    s2_test["mod"] = pycap.dudley_ward_lough_drawdown(**allpars)[:, 1]
     assert np.allclose(
         s1_test["mod"] * allpars["T2"] / allpars["Q"], s1_test["s"], atol=0.035
     )
@@ -958,16 +958,16 @@ def test_custom_exception():
     theis_drawdown(1, 1, [1, 2], [1, 2], 5)
 
 
-def test_complex_well(ward_lough_test_data):
+def test_complex_well(dudley_ward_lough_test_data):
     import pycap
-    from pycap import ward_lough_depletion
+    from pycap import dudley_ward_lough_depletion
     from pycap.wells import Well
 
     # get the test parameters
-    allpars = ward_lough_test_data["params"]
+    allpars = dudley_ward_lough_test_data["params"]
     # now run the base solutions for comparisons
     allpars["time"] = list(range(365))
-    dep1 = ward_lough_depletion(**allpars)
+    dep1 = dudley_ward_lough_depletion(**allpars)
 
     # now configure for running through Well object
     allpars["T"] = allpars["T1"]
@@ -984,7 +984,7 @@ def test_complex_well(ward_lough_test_data):
 
     w = Well(
         "newwell",
-        depl_method="ward_lough_depletion",
+        depl_method="dudley_ward_lough_depletion",
         **allpars,
     )
     # athens test - just making sure it runs
