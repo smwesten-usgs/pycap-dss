@@ -996,3 +996,96 @@ def test_complex_well(dudley_ward_lough_test_data):
 
     # now check against non-Well-object calcs only valid for depletion
     assert np.allclose(dep1[1:], depl["resp1"][1:])
+
+
+# =============================================================================
+# Hunt 03 Edge Case and Validation Tests
+# =============================================================================
+
+@pytest.fixture
+def hunt_03_base_params():
+    """Base parameters for Hunt 03 tests, derived from STRMDEPL08 example."""
+    return {
+        "T": 0.0115740740740741 * 60.0 * 60.0 * 24.0,  # ft²/day
+        "S": 0.001,
+        "dist": 500.0,
+        "Q": 0.557 * 60 * 60 * 24,  # cfd
+        "Bprime": 20,
+        "Bdouble": 15,
+        "aquitard_K": 1.1574074074074073e-05 * 60.0 * 60.0 * 24.0,
+        "sigma": 0.1,
+        "width": 5,
+        "streambed_conductance": (1.1574074074074073e-05 * 60.0 * 60.0 * 24.0) * (5 / 15),
+    }
+
+
+def test_hunt_03_scalar_time_returns_scalar(hunt_03_base_params):
+    """Test that scalar time input returns scalar output."""
+    params = {**hunt_03_base_params, "time": 100.0}
+    result = pycap.hunt_03_depletion(**params)
+    assert np.isscalar(result) or (isinstance(result, np.ndarray) and result.ndim == 0)
+
+
+def test_hunt_03_list_input_handled(hunt_03_base_params):
+    """Test that list inputs are converted correctly."""
+    params = {**hunt_03_base_params, "time": [50, 100, 200, 300]}
+    result = pycap.hunt_03_depletion(**params)
+    assert len(result) == 4
+
+
+def test_hunt_03_zero_time_handling(hunt_03_base_params):
+    """Test that zero time is handled correctly."""
+    params = {**hunt_03_base_params, "time": np.array([0, 1, 7, 30, 90])}
+    result = pycap.hunt_03_depletion(**params)
+    assert result[0] == 0.0
+
+
+def test_hunt_03_depletion_monotonically_increases(hunt_03_base_params):
+    """Test that depletion increases monotonically with time."""
+    params = {**hunt_03_base_params, "time": np.linspace(1, 365, 50)}
+    result = pycap.hunt_03_depletion(**params)
+    diffs = np.diff(result)
+    assert np.all(diffs >= -1e-10), "Depletion should increase with time"
+
+
+def test_hunt_03_depletion_bounded_by_Q(hunt_03_base_params):
+    """Test that depletion is bounded by pumping rate Q."""
+    params = {**hunt_03_base_params, "time": np.linspace(1, 10000, 100)}
+    result = pycap.hunt_03_depletion(**params)
+    Q = params["Q"]
+    assert np.all(result <= Q * 1.001), "Depletion should not exceed Q"
+    assert np.all(result >= 0), "Depletion should be non-negative"
+
+
+def test_hunt_03_approaches_hunt99_for_small_K(hunt_03_base_params):
+    """When aquitard_K is very small, Hunt 03 should approach Hunt 99.
+
+    This is an important physical consistency check - when there's
+    essentially no leakage through the aquitard, the semiconfined
+    solution should match the confined solution.
+    """
+    time_arr = np.array([50, 100, 200, 300])
+
+    # Hunt 99 parameters
+    hunt99_params = {
+        "T": hunt_03_base_params["T"],
+        "S": hunt_03_base_params["S"],
+        "Q": hunt_03_base_params["Q"],
+        "dist": hunt_03_base_params["dist"],
+        "time": time_arr,
+        "streambed_conductance": hunt_03_base_params["streambed_conductance"],
+    }
+
+    # Hunt 03 with very small K
+    hunt03_params = {
+        **hunt_03_base_params,
+        "time": time_arr,
+        "aquitard_K": 1e-15,
+    }
+
+    hunt99_result = pycap.hunt_99_depletion(**hunt99_params)
+    hunt03_result = pycap.hunt_03_depletion(**hunt03_params)
+
+    # Results should be similar (Hunt 03 has additional correction term)
+    np.testing.assert_allclose(hunt03_result, hunt99_result, rtol=0.1,
+                               err_msg="Hunt 03 with small K should approach Hunt 99")
