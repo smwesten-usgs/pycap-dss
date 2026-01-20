@@ -732,6 +732,7 @@ def hunt_03_depletion(
     sigma=None,
     width=None,
     streambed_conductance=None,
+    n_quad=100,
     **kwargs,
 ):
     """Function for Hunt (2003) solution for streamflow depletion by a pumping well.
@@ -783,6 +784,9 @@ def hunt_03_depletion(
     streambed_conductance: float
         streambed conductance [L/T] (lambda in the paper),
         only used if K is less than 1e-10
+    n_quad: int, optional
+        number of Gauss-Legendre quadrature points for numerical integration
+        (default: 100)
     """
     _check_nones(
         locals(),
@@ -829,7 +833,7 @@ def hunt_03_depletion(
     dK = (aquitard_K / Bprime) * np.power(dist, 2) / T
 
     # Compute correction terms using vectorized quadrature
-    correction = _compute_correction(dtime, dlam, epsilon, dK)
+    correction = _compute_correction(dtime, dlam, epsilon, dK, n_quad=n_quad)
 
     # terms for depletion, similar to Hunt (1999) but repeated
     # here so it matches the 2003 paper.
@@ -872,8 +876,8 @@ _LOG_BINOM_2N_N = gammaln(_N2_RANGE + 1) - 2 * gammaln(_N_RANGE + 1)
 _BINOM_2N_N = sps.binom(_N2_RANGE, _N_RANGE)
 
 # Pre-compute default Gauss-Legendre quadrature points and weights
-# 50 points provides sufficient accuracy while being faster than 100
-_DEFAULT_N_QUAD = 50
+# 100 points provides high accuracy for numerical integration
+_DEFAULT_N_QUAD = 100
 _x_gl_default, _w_gl_default = np.polynomial.legendre.leggauss(_DEFAULT_N_QUAD)
 _ALPHA_DEFAULT = 0.5 * (_x_gl_default + 1)  # Transform [-1,1] to [0,1]
 _WEIGHTS_DEFAULT = 0.5 * _w_gl_default
@@ -908,7 +912,7 @@ def _compute_correction(dtime_array, dlam, epsilon, dK, n_quad=_DEFAULT_N_QUAD):
     dK : float
         Dimensionless conductivity
     n_quad : int
-        Number of quadrature points (default: 50)
+        Number of quadrature points (default: 100)
 
     Returns
     -------
