@@ -753,7 +753,7 @@ def hunt_03_depletion(
         storage [unitless]
     time: float, optionally np.array or list
         time at which to calculate results [T]
-    dist: float, 
+    dist: float,
         distance at which to calculate results in [L]
         Note, because of computation demand, only a single value
         for distance can be computed in a call
@@ -779,7 +779,7 @@ def hunt_03_depletion(
     sigma: float
         porosity of semiconfining layer
     width: float
-        stream width (b in paper) [T]
+        stream width (b in paper) [L]
     streambed_conductance: float
         streambed conductance [L/T] (lambda in the paper),
         only used if K is less than 1e-10
@@ -797,21 +797,23 @@ def hunt_03_depletion(
             ]
         },
     )
+
     # turn lists into np.array so they get handled correctly
     time = _make_arrays(time)
     dist = _make_arrays(dist)
+
     if len(dist) > 1 and len(time) > 1:
         _time_dist_error("hunt_03_depletion")
 
     if len(dist) > 1:
         raise PycapException(
-        "cannot have distance as an array\n"
-        + f"in the hunt_03_depletion method.  Need to externally loop\n"
-        + "over distance"
-    )
+            "cannot have distance as an array\n"
+            "in the hunt_03_depletion method. Need to externally loop\n"
+            "over distance"
+        )
 
     dist = dist[0]
-    
+
     # make dimensionless group used in equations
     dtime = (T * time) / (S * np.power(dist, 2))
 
@@ -821,44 +823,33 @@ def hunt_03_depletion(
         lam = streambed_conductance
     else:
         lam = aquitard_K * width / Bdouble
+
     dlam = lam * dist / T
     epsilon = S / sigma
     dK = (aquitard_K / Bprime) * np.power(dist, 2) / T
 
-    # numerical integration of F() and G() functions to
-    # get correction to Hunt(1999) estimate of streamflow depletion
-    # because of storage in the semiconfining aquifer
-    correction = []
-    for dt in dtime:
-        # correcting for zero time
-        if dt == 0:
-            correction.append(0)
-        else:
-            warnings.filterwarnings(
-                "ignore", category=integrate.IntegrationWarning
-            )
-            # note that err from fixed_quad gets returned as None
-            y, err = integrate.fixed_quad(
-                _integrand, 0.0, 1.0, args=(dlam, dt, epsilon, dK), n=100
-            )
-            correction.append(dlam * y)
+    # Compute correction terms using vectorized quadrature
+    correction = _compute_correction(dtime, dlam, epsilon, dK)
 
     # terms for depletion, similar to Hunt (1999) but repeated
     # here so it matches the 2003 paper.
     # note correcting for zero time
     a = np.zeros_like(dtime)
-    a[dtime != 0] = 1.0 / (2.0 * np.sqrt(dtime[dtime != 0]))
+    nonzero_mask = dtime != 0
+    a[nonzero_mask] = 1.0 / (2.0 * np.sqrt(dtime[nonzero_mask]))
+
     b = dlam / 2.0 + (dtime * np.power(dlam, 2) / 4.0)
     c = a + (dlam * np.sqrt(dtime) / 2.0)
 
-    # use erfxc() function from scipy (see hunt_99_depletion above)
+    # use erfcx() function from scipy (see hunt_99_depletion above)
     # for erf(b)*erfc(c) term
     t1 = sps.erfcx(c)
     t2 = np.exp(b - c**2)
+
     # note correcting for zero time
     depl = np.zeros_like(dtime)
-    depl[dtime != 0] = sps.erfc(a[dtime != 0]) - (
-        t1[dtime != 0] * t2[dtime != 0]
+    depl[nonzero_mask] = sps.erfc(a[nonzero_mask]) - (
+        t1[nonzero_mask] * t2[nonzero_mask]
     )
 
     # corrected depletion for storage of upper semiconfining unit
@@ -880,12 +871,67 @@ _LOG_BINOM_2N_N = gammaln(_N2_RANGE + 1) - 2 * gammaln(_N_RANGE + 1)
 # Pre-compute binom(2n, n) directly for small n
 _BINOM_2N_N = sps.binom(_N2_RANGE, _N_RANGE)
 
+# Pre-compute default Gauss-Legendre quadrature points and weights
+# 50 points provides sufficient accuracy while being faster than 100
+_DEFAULT_N_QUAD = 50
+_x_gl_default, _w_gl_default = np.polynomial.legendre.leggauss(_DEFAULT_N_QUAD)
+_ALPHA_DEFAULT = 0.5 * (_x_gl_default + 1)  # Transform [-1,1] to [0,1]
+_WEIGHTS_DEFAULT = 0.5 * _w_gl_default
 
-# =============================================================================
-# Optimized Internal Functions
-# =============================================================================
+# Cache for non-default quadrature
+_QUAD_CACHE = {_DEFAULT_N_QUAD: (_ALPHA_DEFAULT, _WEIGHTS_DEFAULT)}
 
-def _G_vectorized(alpha, epsilon, dK, dtime):
+
+def _get_gauss_legendre(n_quad):
+    """Get cached Gauss-Legendre quadrature points and weights for [0, 1]."""
+    if n_quad not in _QUAD_CACHE:
+        x_gl, w_gl = np.polynomial.legendre.leggauss(n_quad)
+        # Transform from [-1, 1] to [0, 1]
+        alpha_points = 0.5 * (x_gl + 1)
+        weights = 0.5 * w_gl
+        _QUAD_CACHE[n_quad] = (alpha_points, weights)
+    return _QUAD_CACHE[n_quad]
+
+
+def _compute_correction(dtime_array, dlam, epsilon, dK, n_quad=_DEFAULT_N_QUAD):
+    """
+    Compute the correction term for all time points using vectorized operations.
+
+    Parameters
+    ----------
+    dtime_array : ndarray
+        Array of dimensionless times
+    dlam : float
+        Dimensionless streambed conductance
+    epsilon : float
+        Dimensionless storage
+    dK : float
+        Dimensionless conductivity
+    n_quad : int
+        Number of quadrature points (default: 50)
+
+    Returns
+    -------
+    ndarray
+        Correction values for each time point
+    """
+    alpha_points, weights = _get_gauss_legendre(n_quad)
+
+    corrections = np.zeros_like(dtime_array)
+
+    for i, dt in enumerate(dtime_array):
+        if dt == 0:
+            corrections[i] = 0.0
+        else:
+            # Evaluate integrand at all quadrature points (vectorized)
+            integrand_vals = _integrand(alpha_points, dlam, dt, epsilon, dK)
+            # Compute weighted sum
+            corrections[i] = dlam * np.dot(weights, integrand_vals)
+
+    return corrections
+
+
+def _G(alpha, epsilon, dK, dtime):
     """
     Vectorized G function from Hunt (2003) equation (46).
     
@@ -991,260 +1037,61 @@ def _G_vectorized(alpha, epsilon, dK, dtime):
     return eqn52[0] if scalar_input else eqn52
 
 
-
-
-
-
-
-def hunt_03_depletion_optimized(
-    T,
-    S,
-    time,
-    dist,
-    Q,
-    Bprime=None,
-    Bdouble=None,
-    aquitard_K=None,
-    sigma=None,
-    width=None,
-    streambed_conductance=None,
-    **kwargs,
-):
-    """
-    Optimized Hunt (2003) solution for streamflow depletion by a pumping well.
-    
-    This is a performance-optimized version of hunt_03_depletion that produces
-    identical results but runs significantly faster through vectorization.
-    
-    Computes streamflow depletion by a pumping well in a semiconfined aquifer
-    for a partially penetrating stream. The stream is in an upper semi-confining
-    aquifer and pumping is in a lower aquifer.
-    
-    Hunt, B., 2003, Unsteady streamflow depletion when pumping from semiconfined
-    aquifer: Journal of Hydrologic Engineering, v.8, no. 1, pgs 12-19.
-    https://doi.org/10.1061/(ASCE)1084-0699(2003)8:1(12)
+def _F(alpha, dlam, dtime):
+    """Vectorized F function from Hunt (2003) equation (47).
 
     Parameters
     ----------
-    T : float
-        Transmissivity [L**2/T]
-    S : float
-        Storage [unitless]
-    time : float or array-like
-        Time at which to calculate results [T]
-    dist : float
-        Distance at which to calculate results in [L]
-        Note: only a single distance value is supported per call
-    Q : float
-        Pumping rate (+ is extraction) [L**3/T]
-    Bprime : float
-        Saturated thickness of semiconfining layer containing stream [L]
-    Bdouble : float
-        Distance from bottom of stream to bottom of semiconfining layer [L]
-        (aquitard thickness beneath the stream)
-    aquitard_K : float
-        Hydraulic conductivity of semiconfining layer [L/T]
-    sigma : float
-        Porosity of semiconfining layer
-    width : float
-        Stream width [L]
-    streambed_conductance : float
-        Streambed conductance [L/T], used when aquitard_K < 1e-10
+    alpha : float or ndarray
+        Integration variable
+    dlam : float
+        Dimensionless streambed conductance
+    dtime : float
+        Dimensionless time
 
     Returns
     -------
-    Qs : float or ndarray
-        Streamflow depletion rate [L**3/T]
+    float or ndarray
+        F function value(s)
     """
-    _check_nones(
-        locals(),
-        {
-            "hunt_03_depletion_optimized": [
-                "Bprime",
-                "Bdouble",
-                "aquitard_K",
-                "sigma",
-                "width",
-                "streambed_conductance",
-            ]
-        },
-    )
-    
-    # Convert inputs to arrays
-    time = _make_arrays(time)
-    dist = _make_arrays(dist)
-    
-    if len(dist) > 1 and len(time) > 1:
-        _time_dist_error("hunt_03_depletion_optimized")
+    alpha = np.atleast_1d(np.asarray(alpha, dtype=np.float64))
+    scalar_input = alpha.shape == (1,)
 
-    if len(dist) > 1:
-        raise PycapException(
-            "cannot have distance as an array\n"
-            "in the hunt_03_depletion_optimized method. Need to externally loop\n"
-            "over distance"
-        )
+    # z = alpha * dlam * sqrt(dtime) / 2 + 1 / (2 * alpha * sqrt(dtime))
+    sqrt_dtime = np.sqrt(dtime)
+    z = alpha * dlam * sqrt_dtime / 2.0 + 1.0 / (2.0 * alpha * sqrt_dtime)
 
-    dist = dist[0]
-    
-    # Compute dimensionless groups
-    dtime = (T * time) / (S * np.power(dist, 2))
-
-    # Handle very small aquitard_K (collapses to Hunt 1999)
-    if aquitard_K < 1.0e-10:
-        lam = streambed_conductance
-    else:
-        lam = aquitard_K * width / Bdouble
-    
-    dlam = lam * dist / T
-    epsilon = S / sigma
-    dK = (aquitard_K / Bprime) * np.power(dist, 2) / T
-
-    # Compute correction terms using vectorized quadrature
-    correction = _compute_correction_vectorized(dtime, dlam, epsilon, dK)
-
-    # Compute Hunt99-like base depletion terms (vectorized)
-    a = np.zeros_like(dtime)
-    nonzero_mask = dtime != 0
-    a[nonzero_mask] = 1.0 / (2.0 * np.sqrt(dtime[nonzero_mask]))
-    
-    b = dlam / 2.0 + (dtime * np.power(dlam, 2) / 4.0)
-    c = a + (dlam * np.sqrt(dtime) / 2.0)
-
-    # Use erfcx for numerical stability
-    t1 = sps.erfcx(c)
-    t2 = np.exp(b - c**2)
-    
-    depl = np.zeros_like(dtime)
-    depl[nonzero_mask] = sps.erfc(a[nonzero_mask]) - (
-        t1[nonzero_mask] * t2[nonzero_mask]
-    )
-
-    # Apply correction for storage in upper semiconfining unit
-    result = Q * (depl - correction)
-    
-    if len(result) == 1:
-        return result[0]
-    else:
-        return result
-
-
-
-def _F(alpha, dlam, dtime):
-    """F function from paper in equation (46) as given by equation (47) in Hunt (2003)
-
-    Parameters
-    ----------
-    alpha: float
-        integration variable
-    dlam: float
-        dimensionless streambed/semiconfining unit conductance
-        (width * K/B'') * distance/Transmissivity
-    dt: float
-        dimensionless time
-        (time * transmissivity)/(storativity * distance**2)
-    """
-    # Hunt uses an expansion if dimensionless time>3
-    z = alpha * dlam * np.sqrt(dtime) / 2.0 + 1.0 / (
-        2.0 * alpha * np.sqrt(dtime)
-    )
-
-    F = np.where(np.abs(z)<3.0, _f1(z, dlam, dtime, alpha), _f2(z, dlam, dtime, alpha))
-
-    return F
-
-def _f1(z, dlam, dtime, alpha):
-    """function for splitting up _F above"""
-    a = dlam / 2.0 + (dtime * np.power(alpha, 2) * np.power(dlam, 2) / 4.0)
-    t1 = sps.erfcx(z)
-    t2 = np.exp(a - z**2)
-    b = -1.0 / (4 * dtime * alpha**2)
-    # equation 47 in paper
-    F = np.exp(b) * np.sqrt(dtime / np.pi) - (
+    # Compute both branches
+    # Branch 1: |z| < 3
+    a = dlam / 2.0 + (dtime * alpha**2 * dlam**2 / 4.0)
+    t1_f1 = sps.erfcx(z)
+    t2_f1 = np.exp(a - z**2)
+    b_f1 = -1.0 / (4 * dtime * alpha**2)
+    F_branch1 = np.exp(b_f1) * np.sqrt(dtime / np.pi) - (
         alpha * dtime * dlam
-    ) / 2.0 * (t1 * t2)
-    return F
+    ) / 2.0 * (t1_f1 * t2_f1)
 
-def _f2(z, dlam, dtime, alpha):
-    """function for splitting up _F above"""
-    t1 = np.exp(-(1.0 / (4.0 * dtime * alpha**2))) / (
+    # Branch 2: |z| >= 3 (asymptotic expansion)
+    t1_f2 = np.exp(-(1.0 / (4.0 * dtime * alpha**2))) / (
         2.0 * alpha * z * np.sqrt(np.pi)
     )
-    t2 = 2.0 / (dlam * (1.0 + (1.0 / (dlam * dtime * alpha**2)) ** 2))
+    t2_f2 = 2.0 / (dlam * (1.0 + (1.0 / (dlam * dtime * alpha**2)) ** 2))
     sumterm = (
         1
         - (3.0 / (2 * z**2))
         + (15.0 / (4.0 * z**4))
         - (105.0 / (8 * z**6))
     )
-    F = t1 * (1.0 + t2 * sumterm)  # equation 53 in paper
-    return F
+    F_branch2 = t1_f2 * (1.0 + t2_f2 * sumterm)
 
-def _fgt(n, ab, abterm):
-    """function for splitting up _G below"""
-    n2 = n*2
-    return np.exp(
-        np.log(sps.binom(n2, n))
-        + np.log(sps.gammainc(n2 + 1, ab))
-        + (n2) * np.log(abterm)
-    )
+    # Select based on |z|
+    F = np.where(np.abs(z) < 3.0, F_branch1, F_branch2)
 
-
-def _flt(n, ab, abterm):
-    """function for splitting up _G below"""
-    n2 = n*2
-    return (
-        sps.binom(n2, n) * sps.gammainc(n2 + 1, ab) * abterm ** (n2)
-    )
-
-
-def _G(alpha, epsilon, dK, dtime):
-    """G function from paper in equation (46) in Hunt (2003)
-
-    This function is in equation (46) and expanded in
-    equation (53). Function uses scipy special for
-    incomplete Gamma Function (P(a,b)), binomial coefficient,
-    and modified Bessel function of zero order (I0).
-
-    Parameters
-    ----------
-    alpha: float
-        integration variable
-    epsilon: float
-        dimensionless storage
-        storativity/porosity of semiconfining bed
-    dK: float
-        dimensionless conductivity of semiconfining unit
-        (K * Bprime) * dist**2/Transmissivity
-    """
-    # if dimensionless K is zero (check really small), return 0
-    # this avoids divide by zero error in terms that have divide by (a+b)
-    if dK < 1.0e-10:
-        return 0.0
-    alpha2 = alpha**2
-    dKdtime = dK * dtime
-    a = epsilon * dKdtime * (1.0 - alpha2)
-    b = dKdtime * alpha2
-    ab = a + b
-    atb = a * b
-    sqrt_atb = np.sqrt(atb)
-    term1 = np.where(ab<80, np.exp(-ab) * sps.i0(2.0 * sqrt_atb), 0.0)
-    abterm = sqrt_atb / ab
-
-    n = np.arange(60, dtype=np.float64)
-    sum1 = 0.
-    for n in np.arange(60, dtype=np.float64):
-        sum1 = sum1 + np.where(n <= 8, _flt(n, ab, abterm), _fgt(n, ab, abterm))
-
-    eqn52 = 0.5 * (1.0 - term1 + ((b - a) / ab) * sum1)
-    
-    eqn52 = np.where(eqn52< 0., 0., eqn52)
-    eqn52 = np.where(eqn52> 1., 1., eqn52)
-  
-    return eqn52
+    return F[0] if scalar_input else F
 
 
 def _integrand(alpha, dlam, dtime, epsilon, dK):
-    """internal function returning product of F() and G() terms for numerical integration"""
+    """Vectorized integrand F(alpha) * G(alpha) for numerical integration."""
     return _F(alpha, dlam, dtime) * _G(alpha, epsilon, dK, dtime)
 
 
