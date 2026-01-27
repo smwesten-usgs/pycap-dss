@@ -22,6 +22,9 @@ Documentation
 -------------
 For more details, see the [pycap documentation](https://doi-usgs.github.io/pycap-dss/)
 
+Also see this article in _Groundwater_:  
+Fienen, M.N., Pruitt, A.H., and Reeves, H.W. 2026. _Teach Me How to PyCap: A High-Capacity Well Decision Support Tool Using Analytical Solutions in Python._ Groundwater. [DOI: 10.1111/gwat.70046](https://doi.org/10.1111/gwat.70046) 
+
 Metadata Links
 --------------
 
