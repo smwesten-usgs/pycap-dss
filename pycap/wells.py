@@ -183,46 +183,51 @@ class WellResponse:
         return dd
 
     def _calc_depletion(self):
-        """calculate streamflow depletion at
-        time using solution given as attribute to the object"""
+        """Optimized depletion calculation.
+
+        Computes a unit response (Q=1) once for the full time range,
+        then applies superposition via array slicing and scaling.
+        This assumes depletion is linear in Q, which holds for all
+        analytical solutions in pycap (Glover, Hunt99, Hunt03, etc.).
+
+        For intermittent pumping with many on/off transitions, this
+        reduces hundreds of depletion function calls down to one.
+        """
         depl_f = pycap.ALL_DEPL_METHODS[self.depl_method.lower()]
-        # start with zero depletion
         depl = np.zeros(len(self.Q))
 
         deltaQ = pycap._calc_deltaQ(self.Q.copy())
 
-        # initialize with pumping at the first time being positive
-        idx = deltaQ.index[0] - 1
-        cQ = deltaQ.iloc[0]
-        ct = list(range(idx, len(self.Q)))
         if self.depl_method.lower() == "walton_depletion":
-            # walton_depletion method (only) needs these goofy units of gpd/dt for T
             T = self.T_gpd_ft
         else:
             T = self.T
-        depl[idx:] = depl_f(
+
+        # Compute unit response (Q=1) for the longest possible time array.
+        # All superposition calls use time arrays that are subsets of this.
+        max_len = len(self.Q)
+        unit_time = list(range(max_len))
+        unit_response = depl_f(
             T,
             self.S,
-            ct,
+            unit_time,
             self.dist,
-            cQ * self.stream_apportionment,
+            1.0,
             **self.extra_args,
         )
+
+        # Apply superposition using the precomputed unit response
+        idx = deltaQ.index[0] - 1
+        cQ = deltaQ.iloc[0]
+        n = max_len - idx
+        depl[idx:] = cQ * self.stream_apportionment * unit_response[:n]
+
         if len(deltaQ) > 1:
-            deltaQ = deltaQ.iloc[1:]
-            for idx, cQ in zip(deltaQ.index, deltaQ.values):
-                idx -= 2
-                ct = list(range(len(self.Q) - idx))
-                # note that by setting Q negative from the diff
-                # calculations, we always add below for the image wells
-                depl[idx:] += depl_f(
-                    T,
-                    self.S,
-                    ct,
-                    self.dist,
-                    cQ * self.stream_apportionment,
-                    **self.extra_args,
-                )
+            for i_idx, cQ in zip(deltaQ.index[1:], deltaQ.values[1:]):
+                idx = i_idx - 2
+                n = max_len - idx
+                depl[idx:] += cQ * self.stream_apportionment * unit_response[:n]
+
         return depl
 
     @property
