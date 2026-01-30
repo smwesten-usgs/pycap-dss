@@ -1089,3 +1089,202 @@ def test_hunt_03_approaches_hunt99_for_small_K(hunt_03_base_params):
     # Results should be similar (Hunt 03 has additional correction term)
     np.testing.assert_allclose(hunt03_result, hunt99_result, rtol=0.1,
                                err_msg="Hunt 03 with small K should approach Hunt 99")
+
+
+# =============================================================================
+# Optimized _calc_depletion Tests (unit response / linearity)
+# =============================================================================
+
+
+def _make_wellresponse(Q_series, depl_method="glover_depletion", dist=500.0,
+                       T=1000.0, S=0.1, stream_apportionment=1.0,
+                       streambed_conductance=None, **extra):
+    """Helper to create a WellResponse for testing _calc_depletion directly."""
+    from pycap.wells import WellResponse
+    return WellResponse(
+        name="test",
+        response_type="stream",
+        T=T,
+        S=S,
+        dist=dist,
+        Q=Q_series,
+        stream_apportionment=stream_apportionment,
+        depl_method=depl_method,
+        streambed_conductance=streambed_conductance,
+        **extra,
+    )
+
+
+@pytest.mark.parametrize("depl_method,extra_kwargs", [
+    ("glover_depletion", {}),
+    ("hunt_99_depletion", {"streambed_conductance": 5.0}),
+    ("hunt_03_depletion", {
+        "streambed_conductance": 5.0,
+        "Bprime": 10.0,
+        "Bdouble": 5.0,
+        "sigma": 0.3,
+        "width": 10.0,
+        "aquitard_K": 0.01,
+    }),
+    ("walton_depletion", {}),
+])
+def test_depletion_linearity_in_Q(depl_method, extra_kwargs):
+    """Verify that depletion(Q=N) == N * depletion(Q=1) for all methods.
+
+    This is the core assumption underlying the optimized _calc_depletion.
+    """
+    days = 365
+    T = 1000.0
+    S = 0.1
+    dist = 500.0
+
+    depl_f = pycap.ALL_DEPL_METHODS[depl_method]
+    time_arr = list(range(days))
+
+    if depl_method == "walton_depletion":
+        T_use = T * 7.48
+    else:
+        T_use = T
+
+    unit = depl_f(T_use, S, time_arr, dist, 1.0, **extra_kwargs)
+
+    for Q_val in [10.0, 50.0, 137.5]:
+        scaled = depl_f(T_use, S, time_arr, dist, Q_val, **extra_kwargs)
+        np.testing.assert_allclose(
+            scaled, Q_val * np.array(unit), rtol=1e-10,
+            err_msg=f"Linearity failed for {depl_method} at Q={Q_val}",
+        )
+
+
+@pytest.mark.parametrize("depl_method,extra_kwargs", [
+    ("glover_depletion", {}),
+    ("hunt_99_depletion", {"streambed_conductance": 5.0}),
+    ("hunt_03_depletion", {
+        "streambed_conductance": 5.0,
+        "Bprime": 10.0,
+        "Bdouble": 5.0,
+        "sigma": 0.3,
+        "width": 10.0,
+        "aquitard_K": 0.01,
+    }),
+    ("walton_depletion", {}),
+])
+def test_calc_depletion_continuous_pumping(depl_method, extra_kwargs):
+    """Test _calc_depletion with continuous pumping matches direct function call."""
+    days = 365
+    Q_rate = 100.0
+    Q_series = pycap.Q2ts(days, 1, Q_rate)
+
+    wr = _make_wellresponse(Q_series, depl_method=depl_method, **extra_kwargs)
+    result = wr._calc_depletion()
+
+    # Continuous pumping has a single deltaQ entry, so a single direct
+    # depletion call for the full time range should match _calc_depletion.
+    depl_f = pycap.ALL_DEPL_METHODS[depl_method]
+    if depl_method == "walton_depletion":
+        T_use = 1000.0 * 7.48
+    else:
+        T_use = 1000.0
+    time_arr = list(range(days))
+    direct = depl_f(T_use, 0.1, time_arr, 500.0, Q_rate, **extra_kwargs)
+
+    # Both should be length `days` with depletion at t=0 equal to zero,
+    # since the unit response and direct call use the same time array.
+    np.testing.assert_allclose(
+        result, direct, rtol=1e-10,
+        err_msg=f"Continuous pumping mismatch for {depl_method}",
+    )
+
+
+def test_calc_depletion_intermittent_pumping():
+    """Test _calc_depletion with intermittent (on/off) pumping schedule."""
+    days = 365
+    Q_rate = 100.0
+
+    # Build an intermittent schedule: pump weekdays only
+    Q_vals = np.zeros(days)
+    for d in range(days):
+        if d % 7 < 5:  # Mon-Fri
+            Q_vals[d] = Q_rate
+    Q_series = pd.Series(Q_vals, index=range(1, days + 1))
+
+    wr = _make_wellresponse(Q_series, depl_method="glover_depletion")
+    result = wr._calc_depletion()
+
+    # Result should be non-negative (depletion can't go negative for positive pumping)
+    assert np.all(result >= -1e-15), "Depletion went significantly negative"
+
+    # Result should be smaller than continuous pumping at the same rate
+    Q_continuous = pycap.Q2ts(days, 1, Q_rate)
+    wr_cont = _make_wellresponse(Q_continuous, depl_method="glover_depletion")
+    result_cont = wr_cont._calc_depletion()
+
+    assert np.all(result <= result_cont + 1e-10), \
+        "Intermittent depletion exceeds continuous depletion"
+
+
+def test_calc_depletion_intermittent_multiple_methods():
+    """Test that intermittent pumping works across all depletion methods."""
+    days = 180
+    Q_rate = 50.0
+
+    # Pump 8hrs/day approximation: alternate 1-day on, 2-days off
+    Q_vals = np.zeros(days)
+    for d in range(days):
+        if d % 3 == 0:
+            Q_vals[d] = Q_rate
+    Q_series = pd.Series(Q_vals, index=range(1, days + 1))
+
+    methods = [
+        ("glover_depletion", {}),
+        ("hunt_99_depletion", {"streambed_conductance": 5.0}),
+        ("hunt_03_depletion", {
+            "streambed_conductance": 5.0,
+            "Bprime": 10.0,
+            "Bdouble": 5.0,
+            "sigma": 0.3,
+            "width": 10.0,
+            "aquitard_K": 0.01,
+        }),
+        ("walton_depletion", {}),
+    ]
+
+    for depl_method, extra_kwargs in methods:
+        wr = _make_wellresponse(Q_series, depl_method=depl_method, **extra_kwargs)
+        result = wr._calc_depletion()
+        assert len(result) == days, f"Wrong length for {depl_method}"
+        assert np.all(np.isfinite(result)), f"Non-finite values for {depl_method}"
+
+
+def test_calc_depletion_single_pump_change():
+    """Test that a single pump-on event produces monotonically increasing depletion."""
+    days = 365
+    Q_rate = 100.0
+    Q_series = pycap.Q2ts(days, 1, Q_rate)
+
+    wr = _make_wellresponse(Q_series, depl_method="glover_depletion")
+    result = wr._calc_depletion()
+
+    # After pumping starts, depletion should be monotonically non-decreasing
+    nonzero = result[result > 0]
+    assert len(nonzero) > 0, "No depletion computed"
+    assert np.all(np.diff(nonzero) >= -1e-15), \
+        "Continuous pumping depletion is not monotonically increasing"
+
+
+def test_calc_depletion_apportionment_scaling():
+    """Verify that stream_apportionment correctly scales the depletion."""
+    days = 365
+    Q_rate = 100.0
+    Q_series = pycap.Q2ts(days, 1, Q_rate)
+
+    wr_full = _make_wellresponse(Q_series, stream_apportionment=1.0)
+    wr_half = _make_wellresponse(Q_series, stream_apportionment=0.5)
+
+    result_full = wr_full._calc_depletion()
+    result_half = wr_half._calc_depletion()
+
+    np.testing.assert_allclose(
+        result_half, 0.5 * result_full, rtol=1e-10,
+        err_msg="Apportionment scaling is incorrect",
+    )
